@@ -68,6 +68,7 @@ our @EXPORT = qw(
   slurp_file
   append_to_file
   string_replace_file
+  read_file_ends
   check_mode_recursive
   chmod_recursive
   check_pg_config
@@ -586,6 +587,65 @@ sub string_replace_file
 	close($out);
 
 	return;
+}
+
+=pod
+
+=item read_file_ends(filename, direction, line_count, force_line_count)
+
+Return lines from the head or tail of a given file.
+
+=cut
+
+sub read_file_ends
+{
+	my ($filename, $direction, $line_count, $force_line_count) = @_;
+	my @lines;
+
+	if ($direction ne 'tail' && $direction ne 'head')
+	{
+		die
+		  "read_file_ends(_, direction, _, _) direction should be either 'tail' or 'head'.";
+	}
+
+
+	# If the force_line_count is true, then use the provided line_count.
+	# Otherwise, use the PG_TEST_FILE_READ_LINES environment variable if set.
+	if (!$force_line_count)
+	{
+		my $temp_env_var = $ENV{PG_TEST_FILE_READ_LINES};
+		if (defined $temp_env_var)
+		{
+			$line_count = $temp_env_var;
+		}
+	}
+
+	if ($line_count <= 0)
+	{
+		return;
+	}
+
+	open my $fh, '<', $filename or die "couldn't open file: $filename\n";
+
+	if ($direction eq 'head')
+	{
+		while (my $line = <$fh>)
+		{
+			push @lines, $line;
+			last if $. == $line_count;
+		}
+	}
+	elsif ($direction eq 'tail')
+	{
+		while (my $line = <$fh>)
+		{
+			push @lines, $line;
+			shift @lines if @lines > $line_count;
+		}
+	}
+
+	close $fh;
+	return @lines;
 }
 
 =pod

@@ -535,6 +535,14 @@ make check EXTRA_TESTS=numeric_big
    </para>
 
    <para>
+    For certain tests, the environment variable
+    <envar>PG_TEST_FILE_READ_LINES</envar> can be set to limit the number of
+    lines read from the output files. This is useful when test output files
+    are large or contain unnecessary content, allowing the test framework to
+    read only a specified number of lines for comparison.
+   </para>
+
+   <para>
     If for some reason a particular platform generates a <quote>failure</quote>
     for a given test, but inspection of the output convinces you that
     the result is valid, you can add a new comparison file to silence
