@@ -97,6 +97,10 @@ if ($rc != 0 && $primary_alive && $standby_alive)
 		print "=== dumping $diffs ===\n";
 		print slurp_file($diffs);
 		print "=== EOF ===\n";
+
+		# Dump out 50 lines from head and tail of regression diffs to the
+		# failure message.
+		regression_log_helper($diffs, 50);
 	}
 }
 is($rc, 0, 'regression tests pass');
@@ -193,5 +197,55 @@ UPDATE|t), 'check contents of pg_stat_statements on regression database');
 
 $node_standby_1->stop;
 $node_primary->stop;
+
+sub regression_log_helper
+{
+	my ($diff_file, $lines_to_dump) = @_;
+	my @lines;
+
+	my $temp_env_var = $ENV{PG_TEST_FILE_READ_LINES};
+	if (defined $temp_env_var)
+	{
+		$lines_to_dump = $temp_env_var;
+	}
+
+	if ($lines_to_dump <= 0)
+	{
+		return;
+	}
+
+	open my $fh, '<', $diff_file or die "couldn't open file: $diff_file\n";
+
+	while (my $line = <$fh>)
+	{
+		push @lines, $line;
+	}
+	close $fh;
+
+	my $line_count = scalar @lines;
+
+	# If the diff_file has fewer lines than (2 * $lines_to_dump), dump out the
+	# entire file.
+	if ($line_count <= (2 * $lines_to_dump))
+	{
+		diag("\n=== dumping $diff_file ===\n");
+		foreach my $line (@lines)
+		{
+			diag($line);
+		}
+	}
+	else
+	{
+		diag(
+			"\n=== dumping $lines_to_dump lines from head of $diff_file ===\n"
+		);
+		diag(read_file_ends($diff_file, 'head', $lines_to_dump, 1));
+		diag(
+			"\n=== dumping $lines_to_dump lines from tail of $diff_file ===\n"
+		);
+		diag(read_file_ends($diff_file, 'tail', $lines_to_dump, 1));
+	}
+	diag("=== EOF ===\n\n");
+}
 
 done_testing();
